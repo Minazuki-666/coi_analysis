@@ -162,6 +162,9 @@ def spearman_with(X, scores):
   with np.errstate(invalid="ignore", divide="ignore"):
     return np.where(denom > 0, (R.T @ s) / denom, 0.0)
 # %%
+plot_inputs = {}   # timing -> kwargs for plot_cap, filled in by run_timing
+
+
 def run_timing(timing):
   label, slug = TIMING_LABELS[timing]
   mask = timing_all == timing
@@ -216,8 +219,12 @@ def run_timing(timing):
   contrib["higher_in"] = np.where(
     contrib["mean_sec"] >= contrib["mean_non_sec"], "sec", "non-sec")
 
-  plot_cap(label, slug, scores, z, delta2, p_delta, acc, per_group, p_acc,
-           m, explained[:m].sum(), contrib)
+  # q-values need every timing's p-value first (BH), so the CAP1 plot is
+  # deferred until after the summary loop; stash what it needs to draw
+  plot_inputs[timing] = dict(
+    label=label, slug=slug, scores=scores, z=z, delta2=delta2, p_delta=p_delta,
+    acc=acc, per_group=per_group, p_acc=p_acc, m=m,
+    var_m=explained[:m].sum(), contrib=contrib)
   plot_diagnostics(label, slug, curve, m, acc, perm_acc, p_acc)
 
   pd.DataFrame({"ID": df.loc[mask, "ID"].to_numpy(), "sec-type": y,
@@ -242,8 +249,8 @@ def run_timing(timing):
     "perm_acc_mean": perm_acc.mean(),
   }
 # %%
-def plot_cap(label, slug, scores, z, delta2, p_delta, acc, per_group, p_acc,
-             m, var_m, contrib):
+def plot_cap(label, slug, scores, z, delta2, p_delta, q_delta, acc, per_group,
+             p_acc, q_acc, m, var_m, contrib):
   fig, (ax, bx) = plt.subplots(
     1, 2, figsize=(13.5, 6.2), gridspec_kw={"width_ratios": [1.15, 1]})
 
@@ -264,10 +271,11 @@ def plot_cap(label, slug, scores, z, delta2, p_delta, acc, per_group, p_acc,
   ax.set_title(f"{label} — CAP on Bray-Curtis")
   ax.text(0.02, -0.20,
           f"m = {m} axes ({var_m * 100:.0f}% of variation)   "
-          f"$\\delta^2$ = {delta2:.3f}, p = {p_delta:.4f}\n"
+          f"$\\delta^2$ = {delta2:.3f}, p = {p_delta:.4f}, q = {q_delta:.3f}\n"
           f"LOO allocation {acc * 100:.0f}% balanced "
           f"(sec {per_group[1] * 100:.0f}%, non-sec {per_group[0] * 100:.0f}%), "
-          f"p = {p_acc:.3f}   |   thick bar = group mean",
+          f"p = {p_acc:.3f}, q = {q_acc:.3f}   |   thick bar = group mean\n"
+          f"q = FDR (Benjamini-Hochberg) across the 3 timings tested",
           transform=ax.transAxes, fontsize=10, va="top", color=MUTED,
           linespacing=1.6)
   ax.legend(loc="upper right", frameon=False, fontsize=11)
@@ -337,6 +345,13 @@ for col in ["delta2_p", "loo_p"]:
   ranked = summary[col].to_numpy()[order] * len(order) / (np.arange(len(order)) + 1)
   bh = np.minimum.accumulate(ranked[::-1])[::-1]
   summary.loc[summary.index[order], col.removesuffix("_p") + "_q"] = np.minimum(bh, 1.0)
+
+# the CAP1 plot reports q alongside p, so it waits until every timing's p-value
+# is in and the BH correction above can run
+q_by_timing = summary.set_index("timing")[["delta2_q", "loo_q"]].to_dict("index")
+for timing, kwargs in plot_inputs.items():
+  plot_cap(**kwargs, q_delta=q_by_timing[timing]["delta2_q"],
+           q_acc=q_by_timing[timing]["loo_q"])
 
 summary.to_csv(os.path.join(heredir, "cap_summary.csv"), index=False)
 print(summary[["label", "n", "m", "delta2", "delta2_p", "delta2_q",
