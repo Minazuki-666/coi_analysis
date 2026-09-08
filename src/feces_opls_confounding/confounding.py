@@ -216,11 +216,14 @@ p_ctr_ref, p_corr_ref, _ = loadings(X_all[has_type], y_all[has_type])
 top_ref = set(np.argsort(-np.abs(p_corr_ref))[:N_TOP])
 
 draws = []
+p_corr_matched = []   # every draw's p(corr)[1], so the figure is not one lucky draw
 for seed in range(N_DRAWS):
   for kind, mask in [("matched", matched_mask(seed)[0]),
                      ("random", random_mask(seed, n_sec_m, n_non_m))]:
     r2y, q2 = r2y_q2(X_all[mask], y_all[mask])
     p_ctr, p_corr, _ = loadings(X_all[mask], y_all[mask])
+    if kind == "matched":
+      p_corr_matched.append(p_corr)
     draws.append({
       "seed": seed, "draw": kind, "R2Y": r2y, "Q2": q2,
       # (d) does the draw reproduce the unadjusted model's loadings?
@@ -228,6 +231,8 @@ for seed in range(N_DRAWS):
       "top_overlap": len(top_ref & set(np.argsort(-np.abs(p_corr))[:N_TOP])),
     })
 draws = pd.DataFrame(draws)
+# the sign of t_pred is fixed by the y coding, so draws are directly comparable
+p_corr_matched = np.array(p_corr_matched)
 draws.to_csv(os.path.join(heredir, "confounding_draws.csv"), index=False)
 
 print(f"\n===== (b) {N_DRAWS} draws each =====")
@@ -285,26 +290,44 @@ fig.tight_layout()
 fig.savefig(os.path.join(figdir, "matched_vs_random.svg"))
 plt.show()
 # %%
-p_ctr_m, p_corr_m, _ = loadings(X_all[m0], y_all[m0])
-lim = np.abs(np.concatenate([p_corr_ref, p_corr_m])).max() * 1.05
+# Per bin, the matched loading is a distribution over the draws, not one value.
+# Plot its mean with the central 95% of draws as the error bar, so a bin that
+# only moves because of which sec samples were drawn is visible as a long bar.
+p_corr_mean = p_corr_matched.mean(axis=0)
+p_corr_lo, p_corr_hi = np.percentile(p_corr_matched, [2.5, 97.5], axis=0)
 
-fig, ax = plt.subplots(figsize=(6.5, 6))
+r_draws = draws.loc[draws["draw"] == "matched", "r_pcorr"]
+ov_draws = draws.loc[draws["draw"] == "matched", "top_overlap"]
+lim = np.abs(np.concatenate([p_corr_ref, p_corr_lo, p_corr_hi])).max() * 1.05
+
+fig, ax = plt.subplots(figsize=(6.5, 6.5))
 ax.axhline(0, color="lightgray", linewidth=0.8)
 ax.axvline(0, color="lightgray", linewidth=0.8)
 ax.plot([-lim, lim], [-lim, lim], color="lightgray", linestyle="--", linewidth=1)
-ax.scatter(p_corr_ref, p_corr_m, s=22, alpha=0.6, color="#2c7fb8",
-           edgecolor="white", linewidth=0.4)
-rho = spearmanr(p_corr_ref, p_corr_m).statistic
+ax.errorbar(p_corr_ref, p_corr_mean,
+            yerr=[p_corr_mean - p_corr_lo, p_corr_hi - p_corr_mean],
+            fmt="o", markersize=3.5, color="#2c7fb8", ecolor="#2c7fb8",
+            elinewidth=0.9, capsize=0, alpha=0.55, zorder=2)
 ax.set_xlim(-lim, lim); ax.set_ylim(-lim, lim)
-ax.set_xlabel("p(corr)[1] — unadjusted (joined)")
-ax.set_ylabel("p(corr)[1] — feeding-type matched")
-ax.set_title(f"Loadings, adjusted vs unadjusted\nSpearman r = {rho:.3f} "
-             f"(245 bins), top-{N_TOP} overlap = "
-             f"{len(top_ref & set(np.argsort(-np.abs(p_corr_m))[:N_TOP]))}/{N_TOP}",
-             fontsize=12)
+ax.set_xlabel("p(corr)[1] — unadjusted (joined, n=80)")
+ax.set_ylabel(f"p(corr)[1] — feeding-type matched\n(mean of {N_DRAWS} draws)")
+ax.set_title(
+  f"Loadings, adjusted vs unadjusted ({len(ppm)} bins)\n"
+  f"Spearman r = {r_draws.mean():.3f} ± {r_draws.std(ddof=1):.3f}, "
+  f"top-{N_TOP} overlap = {ov_draws.mean():.1f} ± {ov_draws.std(ddof=1):.1f}\n"
+  f"bars: central 95% of {N_DRAWS} draws "
+  f"(r 95%: {r_draws.quantile(.025):.3f}–{r_draws.quantile(.975):.3f})",
+  fontsize=11)
 fig.tight_layout()
 fig.savefig(os.path.join(figdir, "loadings_adjusted_vs_unadjusted.svg"))
 plt.show()
+
+pd.DataFrame({"ppm": ppm, "p_corr_unadjusted": p_corr_ref,
+              "p_corr_matched_mean": p_corr_mean,
+              "p_corr_matched_lo95": p_corr_lo,
+              "p_corr_matched_hi95": p_corr_hi,
+              "width95": p_corr_hi - p_corr_lo}).to_csv(
+  os.path.join(heredir, "confounding_loadings.csv"), index=False)
 # %%
 fig, ax = plt.subplots(figsize=(7, 6))
 jitter_rng = np.random.default_rng(SEED)
