@@ -1,0 +1,13 @@
+taxon,lineage,spearman_CAP1,mean_sec,mean_non_sec,higher_in
+Staphylococcus,d__Bacteria|p__Firmicutes_D|c__Bacilli|o__Staphylococcales|f__Staphylococcaceae|g__Staphylococcus,0.5897362606331981,0.023472802484375,0.015051541076923077,sec
+Veillonella_A,d__Bacteria|p__Firmicutes_C|c__Negativicutes|o__Veillonellales|f__Veillonellaceae|g__Veillonella_A,-0.4976813735629849,0.036204300140625,0.055106059923076926,non-sec
+Streptococcus,d__Bacteria|p__Firmicutes_D|c__Bacilli|o__Lactobacillales|f__Streptococcaceae|g__Streptococcus,0.4654555970345444,0.12487527675,0.057155298076923086,sec
+Lactobacillus,d__Bacteria|p__Firmicutes_D|c__Bacilli|o__Lactobacillales|f__Lactobacillaceae|g__Lactobacillus,0.3760332737650232,0.0064261010468750004,0.004900547692307693,sec
+Bacteria (d),d__Bacteria|__|__|__|__|__,-0.2892923127398093,0.04759556640625,0.09635588092307693,non-sec
+Blautia_A,d__Bacteria|p__Firmicutes_A|c__Clostridia_258483|o__Lachnospirales|f__Lachnospiraceae|g__Blautia_A_141780,0.2619114267194409,0.0033572341249999997,0.00019990407692307692,sec
+Klebsiella,d__Bacteria|p__Proteobacteria|c__Gammaproteobacteria|o__Enterobacterales_A_737866|f__Enterobacteriaceae_A|g__Klebsiella_724518,0.24850780576397088,0.030540046281250004,0.0016840966153846154,sec
+Bacillus_P,d__Bacteria|p__Firmicutes_D|c__Bacilli|o__Bacillales_B_306089|f__Bacillaceae_H_294103|g__Bacillus_P_294101,0.24111455475851157,0.000110111609375,5.330776923076923e-05,sec
+Gemella,d__Bacteria|p__Firmicutes_D|c__Bacilli|o__Staphylococcales|f__Gemellaceae|g__Gemella,0.23737403198598492,0.000254491984375,4.443115384615385e-05,sec
+Unassigned,Unassigned|__|__|__|__|__,0.23734004236037118,2.2081765625e-05,0.0,sec
+Lacrimispora,d__Bacteria|p__Firmicutes_A|c__Clostridia_258483|o__Lachnospirales|f__Lachnospiraceae|g__Lacrimispora,0.23175018169466297,0.000826248421875,0.0,sec
+Bacteroides_H,d__Bacteria|p__Bacteroidota|c__Bacteroidia|o__Bacteroidales|f__Bacteroidaceae|g__Bacteroides_H,0.2240465992776759,0.067982283078125,0.025187310615384616,sec
