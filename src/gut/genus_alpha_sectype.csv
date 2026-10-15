@@ -1,0 +1,4 @@
+timing,metric,n_sec,n_non,median_sec,median_non,p
+Newborn,Observed features,85,18,7.0,8.5,0.35278757148140394
+1 mo.,Observed features,64,13,12.0,11.0,0.8273269234756675
+4-5 mos.,Observed features,65,18,19.0,15.5,0.17006951207071996
