@@ -16,6 +16,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
+from matplotlib.patches import Ellipse
+from scipy.stats import f as f_dist
 import seaborn as sns
 from statsmodels.stats.multitest import multipletests
 
@@ -206,6 +208,71 @@ def plot_s_line(p_ctr, p_corr, title, path):
 def slug(s):
   return re.sub(r"[^0-9A-Za-z]+", "_", s).strip("_")
 # %%
+def plot_score(ex, r, path):
+  """Score plot: t_pred[1] vs t_ortho[1]。直交成分が0のモデルは縦軸を観測値 y (log10存在量) にする。
+  色は y、記号は分泌型 (丸 = sec, 三角 = non-sec)。"""
+  tp, to1, y, sec = ex["t_pred"], ex["t_ortho"], ex["y"], ex["sec"]
+  fig, ax = plt.subplots(figsize=(7.5, 6))
+  vmin, vmax = y.min(), y.max()
+  for cls, marker in [("sec", "o"), ("non-sec", "^")]:
+    sel = sec == cls
+    if not sel.any():
+      continue
+    sc = ax.scatter(tp[sel], (to1 if to1 is not None else y)[sel], c=y[sel], cmap="viridis",
+                    vmin=vmin, vmax=vmax, marker=marker, s=50, alpha=0.8,
+                    edgecolor="white", linewidth=0.5, label=f"{cls} (n={sel.sum()})")
+  if to1 is not None:   # Hotelling T2 95% 楕円
+    n = len(y)
+    radius = np.sqrt(2 * (n - 1) / (n - 2) * f_dist.ppf(0.95, 2, n - 2))
+    ax.add_patch(Ellipse((0, 0), 2 * radius * tp.std(ddof=1), 2 * radius * to1.std(ddof=1),
+                         fill=False, edgecolor="gray", linestyle="--", linewidth=1.2))
+    ax.axhline(0, color="lightgray", linewidth=0.8, zorder=0)
+  ax.axvline(0, color="lightgray", linewidth=0.8, zorder=0)
+  ax.set_xlabel("$t_{pred}$ [1]")
+  ax.set_ylabel("$t_{ortho}$ [1]" if to1 is not None else "observed y (log10 abundance)")
+  ax.set_title(f"OPLS score plot — {r['timing']} {r['genus']} ({r['subset']})\n"
+               f"1+{r['n_ortho']} | R2Y={r['R2Y']:.3f}  Q2={r['Q2']:.3f}  "
+               f"$p_{{Q2}}$={r['p(Q2)']:.3f}", fontsize=11)
+  ax.legend(frameon=False, fontsize=11)
+  fig.colorbar(sc, ax=ax, label="y = log10(abundance + pseudocount)")
+  fig.tight_layout()
+  fig.savefig(path)
+  plt.close(fig)
+
+
+def plot_permutation(ex, r, path):
+  """Permutation plot (左: R2Y/Q2 と y 並べ替え相関の関係, 右: Q2 の帰無分布)"""
+  perm = ex["perm"]
+  fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+  ax = axes[0]
+  ax.scatter(perm[:, 0], perm[:, 1], s=12, alpha=0.4, color="#1f77b4", label="R2Y (perm)")
+  ax.scatter(perm[:, 0], perm[:, 2], s=12, alpha=0.4, color="#2ca02c", label="Q2 (perm)")
+  ax.scatter([1], [r["R2Y"]], s=90, color="#1f77b4", edgecolor="black", zorder=5)
+  ax.scatter([1], [r["Q2"]], s=90, color="#2ca02c", edgecolor="black", zorder=5)
+  for j, obs, color in [(1, r["R2Y"], "#1f77b4"), (2, r["Q2"], "#2ca02c")]:
+    slope, intercept = np.polyfit(np.append(perm[:, 0], 1), np.append(perm[:, j], obs), 1)
+    ax.plot([0, 1], [intercept, slope + intercept], color=color, linewidth=1.2, linestyle="--")
+  ax.text(0.03, 0.03, f"intercepts: R2Y={r['int(R2Y)']:.3f}, Q2={r['int(Q2)']:.3f}",
+          transform=ax.transAxes, fontsize=11)
+  ax.axhline(0, color="lightgray", linewidth=0.8, zorder=0)
+  ax.set_xlabel("|corr(permuted y, y)|")
+  ax.set_ylabel("R2Y / Q2")
+  ax.set_title(f"Permutation plot — {r['timing']} {r['genus']} ({r['subset']})\n"
+               f"({N_PERM} permutations, n_ortho re-selected each time)", fontsize=11)
+  ax.legend(frameon=False, fontsize=11)
+
+  ax = axes[1]
+  ax.hist(perm[:, 2], bins=40, color="#2ca02c", alpha=0.6, label="Q2 null")
+  ax.axvline(r["Q2"], color="black", linewidth=2,
+             label=f"observed Q2 = {r['Q2']:.3f}\np = {r['p(Q2)']:.3f}")
+  ax.set_xlabel("Q2")
+  ax.set_ylabel("count")
+  ax.set_title("Q2 null distribution", fontsize=11)
+  ax.legend(frameon=False, fontsize=11)
+  fig.tight_layout()
+  fig.savefig(path)
+  plt.close(fig)
+# %%
 def run_model(t, g, sec_only=False):
   d = df[df["timing"] == t]
   if sec_only:
@@ -218,15 +285,22 @@ def run_model(t, g, sec_only=False):
          "n_detected": len(nonzero), "prevalence": len(nonzero) / len(d)}
   if len(nonzero) < 3:
     print(f"skip {row['timing']} {g} ({row['subset']}): detected in {len(nonzero)} samples")
-    return row, None
+    return row, None, None
   y = np.log10(ab + nonzero.min() / 2)
 
   folds = np.array_split(np.random.default_rng(SEED).permutation(len(y)), N_SPLITS)
   n_ortho, r2y, q2 = select_model(X, y, folds)
 
   rng = np.random.default_rng(SEED)
-  q2_perm = np.array([select_model(X, rng.permutation(y), folds)[2] for _ in range(N_PERM)])
-  p_q2 = (1 + np.sum(q2_perm >= q2)) / (1 + N_PERM)
+  perm = np.empty((N_PERM, 3))   # |corr(y_perm, y)|, R2Y, Q2
+  for i in range(N_PERM):
+    yp = rng.permutation(y)
+    perm[i] = [abs(np.corrcoef(yp, y)[0, 1]), *select_model(X, yp, folds)[1:]]
+  p_r2y = (1 + np.sum(perm[:, 1] >= r2y)) / (1 + N_PERM)
+  p_q2 = (1 + np.sum(perm[:, 2] >= q2)) / (1 + N_PERM)
+  # 永続性プロットの回帰直線 (x=1 の観測値を含めて引く) の切片。Q2 の切片が負なら過適合の疑いは小さい
+  intercepts = {k: np.polyfit(np.append(perm[:, 0], 1), np.append(perm[:, j], obs), 1)[1]
+                for k, j, obs in [("R2Y", 1, r2y), ("Q2", 2, q2)]}
 
   Xs, _, x_scale = pareto_scale(X)
   model = opls_fit(Xs, y - y.mean(), n_ortho)
@@ -238,16 +312,20 @@ def run_model(t, g, sec_only=False):
   sign = np.sign(np.corrcoef(tp, y)[0, 1])
   p_ctr, p_corr = sign * p_ctr, sign * p_corr
 
-  row.update({"n_ortho": n_ortho, "R2Y": r2y, "Q2": q2, "p(Q2)": p_q2})
+  row.update({"n_ortho": n_ortho, "R2Y": r2y, "p(R2Y)": p_r2y, "Q2": q2, "p(Q2)": p_q2,
+              "int(R2Y)": intercepts["R2Y"], "int(Q2)": intercepts["Q2"]})
   loading = pd.DataFrame({"timing": row["timing"], "genus": g, "subset": row["subset"],
                           "ppm": ppm, "p_ctr": p_ctr, "p_corr": p_corr})
-  return row, loading
+  extra = {"t_pred": sign * tp, "t_ortho": model["T_ortho"][:, 0] if n_ortho >= 1 else None,
+           "y": y, "sec": d["sec-type"].to_numpy(), "perm": perm}
+  return row, loading, extra
 # %%
-rows, loadings = [], []
+rows, loadings, extras = [], [], {}
 for t, g in TARGETS:
   for sec_only in [False, True]:
-    row, loading = run_model(t, g, sec_only)
+    row, loading, extra = run_model(t, g, sec_only)
     rows.append(row)
+    extras[(row["timing"], g, row["subset"])] = extra
     if loading is not None:
       loadings.append(loading)
 summary = pd.DataFrame(rows)
@@ -261,6 +339,14 @@ print(summary.round(3).to_string(index=False))
 
 summary.to_csv(os.path.join(heredir, "opls_genus_summary.csv"), index=False)
 loadings.to_csv(os.path.join(heredir, "opls_genus_loadings.csv"), index=False)
+# %% Score plot と Permutation plot (全サンプル / sec のみ の全モデル)
+for _, r in summary.iterrows():
+  ex = extras[(r["timing"], r["genus"], r["subset"])]
+  if ex is None:
+    continue
+  stem = f"{slug(r['timing'])}_{slug(r['genus'])}" + ("_sec_only" if r["subset"] == "sec only" else "")
+  plot_score(ex, r, os.path.join(figdir, f"score_plot_{stem}.svg"))
+  plot_permutation(ex, r, os.path.join(figdir, f"permutation_{stem}.svg"))
 # %% S-line (全サンプルのモデル)
 for _, r in summary[summary["subset"] == "all"].iterrows():
   ld = loadings[(loadings["timing"] == r["timing"]) & (loadings["genus"] == r["genus"])
