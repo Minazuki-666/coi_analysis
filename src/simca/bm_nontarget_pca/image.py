@@ -29,7 +29,7 @@ sns.scatterplot(
   style="sec",
   markers="d",
   hue="lactationStage",
-  palette="viridis",
+  palette="viridis_r",
   edgecolor="black",
   alpha=0.7,
   zorder=5,

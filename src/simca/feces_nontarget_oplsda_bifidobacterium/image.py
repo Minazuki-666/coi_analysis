@@ -114,7 +114,7 @@ for col, color in zip(["R2", "Q2"], mako):
     label=f"{col} (intercept = {icpt:.3f})",
   )
 ax.set_xlabel("Correlation between original and permuted Y")
-ax.set_ylabel("R2 / Q2")
+ax.set_ylabel("R²Y / Q²")
 ax.legend()
 plt.tight_layout()
 plt.show()

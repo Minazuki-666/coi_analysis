@@ -49,7 +49,7 @@ def plot_permutation(df, title=None):
 
     ax.set_title(title)
     ax.set_xlabel("Correlation between original and permuted Y")
-    ax.set_ylabel("R2 / Q2")
+    ax.set_ylabel("R²Y / Q²")
     ax.legend()
     plt.tight_layout()
     plt.show()
