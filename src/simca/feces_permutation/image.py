@@ -40,12 +40,13 @@ def plot_permutation(df, title=None):
     for col in ["R2", "Q2"]:
         c = colors[col]
         y0 = orig_vals[col]
+        labelColDict = {"R2": "R²Y", "Q2": "Q²"}
         ax.scatter(df_perm["Correlation"], df_perm[col], s=12, color=c, alpha=0.6)
         ax.scatter([1.0], [y0], s=60, color=c, edgecolor="k", zorder=3)
 
         slope, icpt = fit_through_point(df_perm["Correlation"], df_perm[col], 1.0, y0)
         ax.plot(x_line, icpt + slope * x_line, color=c, lw=1.5,
-                label=f"{col} (intercept = {icpt:.3f})")
+                label=f"{labelColDict[col]} (intercept = {icpt:.3f})")
 
     ax.set_title(title)
     ax.set_xlabel("Correlation between original and permuted Y")
