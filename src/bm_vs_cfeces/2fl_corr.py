@@ -81,11 +81,11 @@ def plot_scatter(x, y, title, timing=4):
     ax=ax
   )
   ax.text(
-    0.05, 0.95, f"ρ = {r['rho']:.2f}\nq = {r['q']:.3f}",
+    0.05, 0.95, f"ρ = {r['rho']:.2f}\n" + ("q < 0.001" if r["q"] < 0.001 else f"q = {r['q']:.3f}"),
     transform=ax.transAxes, va="top",
   )
   ax.set_xlabel(f"Breast milk {x} (mM)")
-  ax.set_ylabel(f"Infant feces bin({y}) (mM)")
+  ax.set_ylabel(f"Infant feces bin({y})")
   ax.set_title(title)
   plt.show()
 #%%
