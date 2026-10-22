@@ -26,6 +26,7 @@ def make_key(df):
   return df["family"].astype(str) + "_" + df["timing"].astype(str)
 
 df_bm = pd.read_csv("../../data/hbm_profile.csv")
+df_bm = df_bm[df_bm["sec"] == "sec"]
 df_bm["key"] = make_key(df_bm)
 df_bm = df_bm.reindex(columns=["key", "timing", "sec", "2'-fucosyllactose", "3-fucosyllactose"])
 df_bm
