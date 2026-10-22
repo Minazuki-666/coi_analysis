@@ -20,7 +20,7 @@ sns.histplot(
   multiple="stack",
   log_scale=10,
   bins=50,
-  palette="crest",
+  palette="crest_r",
   ax=ax,
 )
 # conc_leftside = 0.55
