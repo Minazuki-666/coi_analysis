@@ -3,14 +3,14 @@
 
 - alpha多様性 (Observed features): Mann-Whitney U検定
 - beta多様性 (Bray-Curtis): PCoA + PERMANOVA
-- 各Genus: Mann-Whitney U検定とWelchのt検定 (多重検定補正なし)
+- 各Genus: Mann-Whitney U検定 (多重検定補正なし)。p<0.05のGenusはstripplotを描画
 """
 import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.stats import mannwhitneyu, ttest_ind, chi2
+from scipy.stats import mannwhitneyu, chi2
 from matplotlib.patches import Ellipse
 from scipy.spatial.distance import pdist, squareform
 
@@ -188,7 +188,7 @@ for t, d in df.groupby("timing"):
   plt.show()
 
 # %%
-# 各Genusの sec vs non-sec 比較 (timingごと、多重検定補正なし)
+# 各Genusの sec vs non-sec 比較 (Mann-Whitney U検定、timingごと、多重検定補正なし)
 res = []
 for t, d in df.groupby("timing"):
   sec = (d["sec-type"] == "sec").to_numpy()
@@ -198,29 +198,57 @@ for t, d in df.groupby("timing"):
       continue
     a, b = x[sec], x[~sec]
     res.append(dict(
-      timing=timing_labels[t], genus=names[c],
-      mean_sec=a.mean(), mean_non=b.mean(),
+      timing=timing_labels[t], genus=names[c], col=c,
       median_sec=np.median(a), median_non=np.median(b),
+      mean_sec=a.mean(), mean_non=b.mean(),
       prev_sec=(a > 0).mean(), prev_non=(b > 0).mean(),
       higher_in="sec" if a.mean() > b.mean() else "non-sec",
       p_mannWhitneyU=mannwhitneyu(a, b, alternative="two-sided").pvalue,
-      p_welch=ttest_ind(a, b, equal_var=False).pvalue,
     ))
 genus_all = pd.DataFrame(res)
-# どちらかの検定で p<0.05 のGenus。どちらで有意かを sig_mannWhitneyU / sig_welch に示す
-genus_all["sig_mannWhitneyU"] = genus_all["p_mannWhitneyU"] < ALPHA
-genus_all["sig_welch"] = genus_all["p_welch"] < ALPHA
-genus_sig = genus_all[genus_all["sig_mannWhitneyU"] | genus_all["sig_welch"]].copy()
-genus_sig["timing"] = pd.Categorical(genus_sig["timing"], list(timing_labels.values()), ordered=True)
-genus_sig = genus_sig.sort_values(["timing", "p_welch"])
+genus_all["timing"] = pd.Categorical(genus_all["timing"], list(timing_labels.values()), ordered=True)
+genus_all = genus_all.sort_values(["timing", "p_mannWhitneyU"])
+genus_sig = genus_all[genus_all["p_mannWhitneyU"] < ALPHA]
 
 alpha_stats.to_csv(os.path.join(heredir, "genus_alpha_sectype.csv"), index=False)
 beta_stats.to_csv(os.path.join(heredir, "genus_beta_sectype_permanova.csv"), index=False)
-genus_all.to_csv(os.path.join(heredir, "genus_sectype_all_tests.csv"), index=False)
-genus_sig.to_csv(os.path.join(heredir, "genus_sectype_significant.csv"), index=False)
+genus_all.drop(columns="col").to_csv(os.path.join(heredir, "genus_sectype_all_tests.csv"), index=False)
+genus_sig.drop(columns="col").to_csv(os.path.join(heredir, "genus_sectype_significant.csv"), index=False)
 
+show_cols = ["genus", "median_sec", "median_non", "prev_sec", "prev_non", "higher_in", "p_mannWhitneyU"]
+for t, r in genus_all.groupby("timing", observed=True):
+  sig = r[r["p_mannWhitneyU"] < ALPHA]
+  print(f"\n== {t}: tested {len(r)} genera, p<{ALPHA}: {len(sig)}")
+  if len(sig):
+    print(sig[show_cols].round(4).to_string(index=False))
+
+# %%
+# 有意差のあったGenusのstripplot (timingごとに1枚)
+tcode = {v: k for k, v in timing_labels.items()}
 for t, r in genus_sig.groupby("timing", observed=True):
-  tested = (genus_all["timing"] == t).sum()
-  print(f"\n== {t}: tested {tested} genera, p<{ALPHA}: mannWhitneyU {r['sig_mannWhitneyU'].sum()}, Welch {r['sig_welch'].sum()}")
-  print(r.drop(columns="timing").round(4).to_string(index=False))
+  d = df[df["timing"] == tcode[t]].copy()
+  d["Group"] = d["sec-type"].map(group_labels)
+  ncol = min(len(r), 4)
+  nrow = int(np.ceil(len(r) / ncol))
+  fig, axes = plt.subplots(nrow, ncol, figsize=(2.6 * ncol, 3.2 * nrow), squeeze=False)
+  for ax, (_, row) in zip(axes.flat, r.iterrows()):
+    sns.stripplot(
+      data=d, x="Group", y=row["col"], order=list(group_labels.values()),
+      hue="Group", hue_order=list(group_labels.values()), legend=False,
+      palette={group_labels[g]: palette[g] for g in group_order},
+      size=3, alpha=0.6, edgecolor="none", ax=ax,
+    )
+    for i, g in enumerate(group_order):  # 中央値
+      med = np.median(d.loc[d["sec-type"] == g, row["col"]])
+      ax.hlines(med, i - 0.3, i + 0.3, color="k", lw=1.5)
+    ax.set_title(f"{row['genus']}\n{p_text(row['p_mannWhitneyU'])}", fontsize=8)
+    ax.set_xlabel("")
+    ax.set_ylabel("Relative abundance")
+    ax.tick_params(axis="x", labelsize=8)
+  for ax in axes.flat[len(r):]:
+    ax.axis("off")
+  fig.suptitle(f"{t} (Mann-Whitney U, uncorrected)", fontsize=11)
+  fig.tight_layout()
+  fig.savefig(os.path.join(heredir, f"genus_sectype_significant_{fig_names[tcode[t]]}.png"), dpi=300, bbox_inches="tight")
+  plt.show()
 # %%
