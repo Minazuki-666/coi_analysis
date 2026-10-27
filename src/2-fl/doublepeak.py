@@ -58,5 +58,5 @@ for text in ax.get_legend().get_texts():
 ax.get_legend().set_title(None)
 ax.set_xlabel("2'-FL concentration (mM)")
 ax.set_ylabel("Number of samples")
-plt.show()
+plt.savefig("./doublepeak.png", dpi=300, bbox_inches="tight")
 # %%
