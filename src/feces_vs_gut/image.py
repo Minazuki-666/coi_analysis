@@ -29,7 +29,7 @@ BIN_WIDTH = 0.04
 
 df = pd.read_csv(DATA)
 df = df[df["age"] == "c"]
-bin_cols = list(df.columns[8:])  # 先頭 8 列はメタ情報 + CLR
+bin_cols = [c for c in df.columns[6:] if not c.endswith("_CLR")]  # 先頭 6 列はメタ情報、続く *_CLR 列は属の CLR
 ppm = np.array([float(c) for c in bin_cols])
 
 # ---- 相関計算 ----
