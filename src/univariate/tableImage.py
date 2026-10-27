@@ -19,6 +19,8 @@ df = pd.read_csv(os.path.join(datadir, "hbm_profile.csv"))
 TIMING_LABEL = {3: "Newborn", 4: "1 mo.", 5: "4-5 mos"}
 SEC_ORDER = ["sec", "non-sec"]
 conc_cols = list(df.columns[df.columns.get_loc("2'-fucosyllactose"):])  # 濃度の列
+DILUTION = 600 / 270  # hbm_profile.csv の濃度は希釈後の値なので、希釈前 (母乳中) の濃度に戻す
+df[conc_cols] = df[conc_cols] * DILUTION
 
 
 def fmt_mean_sd(x):
