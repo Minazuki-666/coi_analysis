@@ -88,8 +88,8 @@ ax.set_ylim(y.min() * 1.1, y.max() * 1.1)
 ax.set_xlabel("¹H Chemical shift (ppm)")
 ax.set_ylabel("p(ctr)")
 fig.colorbar(lc, ax=ax, label="Absolute correlation with predictive component")
-# |p(corr)[1]|>0.3 のビンのケミカルシフトを表記
-labeled = d[d["abs(M6.p(corr)[1])"] > 0.3]
+# |p(corr)[1]| 上位20個のビンのケミカルシフトを表記
+labeled = d.nlargest(20, "abs(M6.p(corr)[1])")
 texts = [
   ax.text(r["Primary ID"], r["M6.p(ctr)[1]"], f"{r['Primary ID']:.2f}", fontsize=9)
   for _, r in labeled.iterrows()

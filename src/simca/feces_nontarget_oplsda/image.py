@@ -24,7 +24,13 @@ DATASETS = {
   ),
   "newborn": dict(
     score="./score_newborn.txt",
-    sline=lambda: pd.read_csv("../../opls/feces_opls_sline_newborn.csv"),
+    sline=lambda: pd.read_csv("./sline_newborn.txt", sep="\t").rename(
+      columns={
+        "Primary ID": "ppm",
+        "M11.p(ctr)[1]": "p_ctr",
+        "M11.p(corr)[1]": "p_corr",
+      }
+    ),
   ),
 }
 
@@ -76,8 +82,8 @@ def plot_sline(df_sline, label_peaks=False):
   ax.set_ylabel("p(ctr)")
   fig.colorbar(lc, ax=ax, label="Absolute correlation with predictive component")
   if label_peaks:
-    # |p(corr)[1]|>0.3 のビンのケミカルシフトを表記
-    labeled = d[d["abs_corr"] > 0.3]
+    # |p(corr)[1]| 上位20個のビンのケミカルシフトを表記
+    labeled = d.nlargest(20, "abs_corr")
     texts = [
       ax.text(r["ppm"], r["p_ctr"], f"{r['ppm']:.2f}", fontsize=9)
       for _, r in labeled.iterrows()

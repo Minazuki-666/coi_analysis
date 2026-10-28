@@ -45,7 +45,7 @@ sns.scatterplot(
 )
 name_col = df_loading.columns[0]  # "Primary ID" (代謝物名)
 texts = []
-for _, row in df_loading[df_loading["abs(M15.p(corr)[1])"] > 0.5].iterrows():
+for _, row in df_loading.nlargest(20, "abs(M15.p(corr)[1])").iterrows():
   texts.append(
     ax.text(
       row["M15.pq[1]"],

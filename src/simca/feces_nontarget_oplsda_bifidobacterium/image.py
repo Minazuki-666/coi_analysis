@@ -7,7 +7,7 @@ from adjustText import adjust_text
 from matplotlib.collections import LineCollection
 
 sns.set_style("whitegrid")
-N_ANNOTATE = 15  # S-line でラベルを付ける bin の数 (|p(corr)[1]| の上位)
+N_ANNOTATE = 20  # S-line でラベルを付ける bin の数 (|p(corr)[1]| の上位)
 # %%
 df_score = pd.read_csv("./score.txt", sep="\t")
 df_sline = pd.read_csv("./sline.txt", sep="\t")
