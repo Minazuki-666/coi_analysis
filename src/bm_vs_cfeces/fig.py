@@ -70,7 +70,7 @@ df_corr
 def get_corr(df, x, y, timing):
   return df[(df["timing"] == timing) & (df["x"] == x) & (df["y"] == y)].iloc[0]
 
-def plot_scatter(x, y, title, timing=4):
+def plot_scatter(x, y, title, fname, timing=4):
   r = get_corr(df_corr, x, y, timing)
   fig, ax = plt.subplots()
   sns.scatterplot(
@@ -87,10 +87,11 @@ def plot_scatter(x, y, title, timing=4):
   ax.set_xlabel(f"Breast milk {x} (mM)")
   ax.set_ylabel(f"Infant feces bin({y})")
   ax.set_title(title)
+  fig.savefig(fname, bbox_inches="tight")
   plt.show()
 #%%
-plot_scatter("2'-FL", "1.22", "At 1 mo. (n=64)")
-plot_scatter("3-FL", "1.18", "At 1 mo. (n=64)")
+plot_scatter("2'-FL", "1.22", "At 1 mo. (n=64)", "scatter_2FL_1.22.svg")
+plot_scatter("3-FL", "1.18", "At 1 mo. (n=64)", "scatter_3FL_1.18.svg")
 #%%
 def pair_label(x, y):
   if x in BINS:
@@ -133,8 +134,48 @@ def plot_forest(df, groups=FOREST_GROUPS, q_th=0.05):
     ],
   )
   plt.tight_layout()
+  fig.savefig("forest.svg", bbox_inches="tight")
   plt.show()
 #%%
 plot_forest(df_corr)
+
+#%%
+#%%
+def calc_ratio_corr(df):
+  """timing ごとの log(feces 1.18/1.22) と log(BM 3-FL/2'-FL) の Spearman 相関"""
+  df = df.assign(
+    log_feces=np.log(df["1.18"] / df["1.22"]),
+    log_bm=np.log(df["3-FL"] / df["2'-FL"]),
+  )
+  results = []
+  for timing, df_t in df.groupby("timing"):
+    d = df_t[["log_bm", "log_feces"]].dropna()
+    rho, p = spearmanr(d["log_bm"], d["log_feces"])
+    se = np.sqrt(1.06 / (len(d) - 3))
+    z = np.arctanh(rho)
+    results.append({
+      "timing": TIMING_NAMES.get(timing, timing), "n": len(d), "rho": rho, "p": p,
+      "lo": np.tanh(z - 1.96 * se), "hi": np.tanh(z + 1.96 * se),
+    })
+  return df, pd.DataFrame(results)
+
+df_ratio, df_ratio_corr = calc_ratio_corr(df_merge)
+df_ratio_corr
+#%%
+def plot_ratio_scatter(df, df_corr):
+  fig, axes = plt.subplots(1, len(df_corr), figsize=(4 * len(df_corr), 4), sharex=True, sharey=True)
+  for ax, (timing, name) in zip(axes, TIMING_NAMES.items()):
+    r = df_corr[df_corr["timing"] == name].iloc[0]
+    sns.scatterplot(data=df[df["timing"] == timing], x="log_bm", y="log_feces", color="gray", ax=ax)
+    ax.text(0.05, 0.95, f"ρ = {r['rho']:.2f}\n" + ("p < 0.001" if r["p"] < 0.001 else f"p = {r['p']:.3f}"),
+            transform=ax.transAxes, va="top")
+    ax.set_title(f"{name} (n={r['n']})")
+    ax.set_xlabel("Breast milk log(3-FL / 2'-FL)")
+    ax.set_ylabel("Infant feces log(1.18 / 1.22)")
+  plt.tight_layout()
+  fig.savefig("ratio_scatter.svg", bbox_inches="tight")
+  plt.show()
+
+plot_ratio_scatter(df_ratio, df_ratio_corr)
 
 # %%
