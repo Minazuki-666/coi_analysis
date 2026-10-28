@@ -38,7 +38,8 @@ ax.legend(frameon=False)
 ax.set_xlabel("Predictive component")
 ax.set_ylabel("Orthogonal component")
 fig.colorbar(sc, ax=ax, label="CLR(Bacteroides_H)")
-plt.show()
+fig.savefig("score.svg", bbox_inches="tight")
+plt.close(fig)
 
 # %% S-line (annotate=True なら |p(corr)[1]| 上位 N_ANNOTATE 個にケミカルシフトを表記)
 def plot_s_line(annotate):
@@ -79,7 +80,8 @@ def plot_s_line(annotate):
       expand=(1.5, 1.5),
       arrowprops=dict(arrowstyle="-", color="gray", lw=0.5),
     )
-  plt.show()
+  fig.savefig(f"sline{'_labeled' if annotate else ''}.svg", bbox_inches="tight")
+  plt.close(fig)
 
 
 plot_s_line(annotate=False)
@@ -117,5 +119,6 @@ ax.set_xlabel("Correlation between original and permuted Y")
 ax.set_ylabel("R²Y / Q²")
 ax.legend()
 plt.tight_layout()
-plt.show()
+fig.savefig("permutation.svg", bbox_inches="tight")
+plt.close(fig)
 # %%

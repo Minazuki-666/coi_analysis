@@ -50,5 +50,6 @@ ax.legend(
   [h for i, h in enumerate(handles) if i not in drop],
   [legend_titles.get(l, l) for i, l in enumerate(labels) if i not in drop],
 )
-plt.show()
+fig.savefig("score.svg", bbox_inches="tight")
+plt.close(fig)
 # %%

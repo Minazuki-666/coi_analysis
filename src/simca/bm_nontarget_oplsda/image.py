@@ -29,7 +29,8 @@ for text in ax.get_legend().get_texts():
 ax.get_legend().set_title(None)
 ax.set_xlabel("Predictive component")
 ax.set_ylabel("Orthogonal component")
-plt.show()
+fig.savefig("score.svg", bbox_inches="tight")
+plt.close(fig)
 
 # %%
 sns.set_style("whitegrid")
@@ -58,7 +59,8 @@ ax.set_ylim(y.min() * 1.1, y.max() * 1.1)
 ax.set_xlabel("¹H Chemical shift (ppm)")
 ax.set_ylabel("p(ctr)")
 fig.colorbar(lc, ax=ax, label="Absolute correlation with predictive component")
-plt.show()
+fig.savefig("sline.svg", bbox_inches="tight")
+plt.close(fig)
 
 # %%
 fig, ax = plt.subplots(figsize=(10, 5))
@@ -98,5 +100,6 @@ adjust_text(
   expand=(1.5, 1.5),
   arrowprops=dict(arrowstyle="-", color="gray", lw=0.5),
 )
-plt.show()
+fig.savefig("sline_labeled.svg", bbox_inches="tight")
+plt.close(fig)
 # %%

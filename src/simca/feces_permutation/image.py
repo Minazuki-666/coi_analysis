@@ -53,7 +53,8 @@ def plot_permutation(df, title=None):
     ax.set_ylabel("R²Y / Q²")
     ax.legend()
     plt.tight_layout()
-    plt.show()
+    fig.savefig(f"permutation_{re.sub(r'\W+', '_', title).strip('_')}.svg", bbox_inches="tight")
+    plt.close(fig)
     return fig
 
 for df, title in [(df_0, "Newborn"), (df_1, "1 mo."), (df_4, "4-5 mos.")]:

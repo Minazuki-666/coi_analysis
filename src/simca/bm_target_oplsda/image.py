@@ -28,7 +28,8 @@ for text in ax.get_legend().get_texts():
 ax.get_legend().set_title(None)
 ax.set_xlabel("Predictive component")
 ax.set_ylabel("Orthogonal component")
-plt.show()
+fig.savefig("score.svg", bbox_inches="tight")
+plt.close(fig)
 
 # %%
 fig, ax = plt.subplots(figsize=(7, 5))
@@ -66,5 +67,6 @@ sm = plt.cm.ScalarMappable(cmap="coolwarm", norm=norm)
 ax.set_xlabel("Predictive component")
 ax.set_ylabel("Orthogonal component")
 fig.colorbar(sm, ax=ax, label="Correlation with predictive component")
-plt.show()
+fig.savefig("loading.svg", bbox_inches="tight")
+plt.close(fig)
 # %%

@@ -66,7 +66,7 @@ for i, (ax, t) in enumerate(zip(axes[:-1], timings)):
     else:
         ax.set_yticks([])
 fig.suptitle("Spearman correlation (sec only), FDR (BH) q shown if q < 0.05", y=1.08)
-fig.savefig("spearman_sec_heatmap.png", dpi=300, bbox_inches="tight")
-plt.show()
+fig.savefig("spearman_sec_heatmap.svg", bbox_inches="tight")
+plt.close(fig)
 
 # %%
