@@ -26,7 +26,6 @@ def make_key(df):
   return df["family"].astype(str) + "_" + df["timing"].astype(str)
 
 df_bm = pd.read_csv("../../data/hbm_profile.csv")
-df_bm = df_bm[df_bm["sec"] == "sec"]
 df_bm["key"] = make_key(df_bm)
 df_bm = df_bm.reindex(columns=["key", "timing", "sec", "2'-fucosyllactose", "3-fucosyllactose"])
 df_bm
@@ -64,17 +63,18 @@ def calc_corr(df, pairs):
   df_corr["hi"] = np.tanh(z + 1.96 * se)
   return df_corr
 
-df_corr = calc_corr(df_merge, PAIRS)
-df_corr
+SEC_TYPES = ["sec", "non-sec"]
+df_corrs = {sec: calc_corr(df_merge[df_merge["sec"] == sec], PAIRS) for sec in SEC_TYPES}
+df_corrs
 #%%
 def get_corr(df, x, y, timing):
   return df[(df["timing"] == timing) & (df["x"] == x) & (df["y"] == y)].iloc[0]
 
-def plot_scatter(x, y, title, fname, timing=4):
+def plot_scatter(df, df_corr, x, y, title, fname, timing=4):
   r = get_corr(df_corr, x, y, timing)
   fig, ax = plt.subplots()
   sns.scatterplot(
-    data=df_merge[df_merge["timing"] == timing],
+    data=df[df["timing"] == timing],
     x=x,
     y=y,
     color="gray",
@@ -90,15 +90,19 @@ def plot_scatter(x, y, title, fname, timing=4):
   fig.savefig(fname, bbox_inches="tight")
   plt.show()
 #%%
-plot_scatter("2'-FL", "1.22", "At 1 mo. (n=64)", "scatter_2FL_1.22.svg")
-plot_scatter("3-FL", "1.18", "At 1 mo. (n=64)", "scatter_3FL_1.18.svg")
+for sec in SEC_TYPES:
+  df_s = df_merge[df_merge["sec"] == sec]
+  n = (df_s["timing"] == 4).sum()
+  title = f"{sec}, at 1 mo. (n={n})"
+  plot_scatter(df_s, df_corrs[sec], "2'-FL", "1.22", title, f"scatter_2FL_1.22_{sec}.svg")
+  plot_scatter(df_s, df_corrs[sec], "3-FL", "1.18", title, f"scatter_3FL_1.18_{sec}.svg")
 #%%
 def pair_label(x, y):
   if x in BINS:
     return f"Feces {x} bin\nvs Feces {y} bin"
   return f"Breast milk {x}\nvs Feces {y} bin"
 
-def plot_forest(df, groups=FOREST_GROUPS, q_th=0.05):
+def plot_forest(df, sec, groups=FOREST_GROUPS, q_th=0.05):
   timings = sorted(df["timing"].unique())
   colors = plt.cm.viridis(np.linspace(0.1, 0.85, len(timings)))
   offsets = np.linspace(0.25, -0.25, len(timings))
@@ -125,7 +129,7 @@ def plot_forest(df, groups=FOREST_GROUPS, q_th=0.05):
   ax.set_yticks(yticks)
   ax.set_yticklabels(ylabels)
   ax.set_xlabel(f"Spearman ρ (95% CI; filled: q < {q_th})")
-  ax.set_title("Correlation between breast milk FL and infant feces bins")
+  ax.set_title(f"Correlation between breast milk FL and infant feces bins ({sec})")
   ax.spines[["top", "right"]].set_visible(False)
   ax.legend(
     handles=[
@@ -134,10 +138,11 @@ def plot_forest(df, groups=FOREST_GROUPS, q_th=0.05):
     ],
   )
   plt.tight_layout()
-  fig.savefig("forest.svg", bbox_inches="tight")
+  fig.savefig(f"forest_{sec}.svg", bbox_inches="tight")
   plt.show()
 #%%
-plot_forest(df_corr)
+for sec in SEC_TYPES:
+  plot_forest(df_corrs[sec], sec)
 
 #%%
 #%%
@@ -159,23 +164,26 @@ def calc_ratio_corr(df):
     })
   return df, pd.DataFrame(results)
 
-df_ratio, df_ratio_corr = calc_ratio_corr(df_merge)
-df_ratio_corr
+ratio_results = {sec: calc_ratio_corr(df_merge[df_merge["sec"] == sec]) for sec in SEC_TYPES}
+for sec, (_, df_rc) in ratio_results.items():
+  print(sec)
+  print(df_rc)
 #%%
-def plot_ratio_scatter(df, df_corr):
+def plot_ratio_scatter(df, df_corr, sec):
   fig, axes = plt.subplots(1, len(df_corr), figsize=(4 * len(df_corr), 4), sharex=True, sharey=True)
   for ax, (timing, name) in zip(axes, TIMING_NAMES.items()):
     r = df_corr[df_corr["timing"] == name].iloc[0]
     sns.scatterplot(data=df[df["timing"] == timing], x="log_bm", y="log_feces", color="gray", ax=ax)
     ax.text(0.05, 0.95, f"ρ = {r['rho']:.2f}\n" + ("p < 0.001" if r["p"] < 0.001 else f"p = {r['p']:.3f}"),
             transform=ax.transAxes, va="top")
-    ax.set_title(f"{name} (n={r['n']})")
+    ax.set_title(f"{sec}, {name} (n={r['n']})")
     ax.set_xlabel("Breast milk log(3-FL / 2'-FL)")
     ax.set_ylabel("Infant feces log(1.18 / 1.22)")
   plt.tight_layout()
-  fig.savefig("ratio_scatter.svg", bbox_inches="tight")
+  fig.savefig(f"ratio_scatter_{sec}.svg", bbox_inches="tight")
   plt.show()
 
-plot_ratio_scatter(df_ratio, df_ratio_corr)
+for sec, (df_r, df_rc) in ratio_results.items():
+  plot_ratio_scatter(df_r, df_rc, sec)
 
 # %%
