@@ -65,6 +65,15 @@ def calc_corr(df, pairs):
 
 SEC_TYPES = ["sec", "non-sec"]
 df_corrs = {sec: calc_corr(df_merge[df_merge["sec"] == sec], PAIRS) for sec in SEC_TYPES}
+df_corr_all = pd.concat(df_corrs, names=["sec"]).reset_index("sec")
+def source_label(v):
+  return f"Infant feces bin {v}" if v in BINS else f"Breast milk {v}"
+
+df_corr_all.assign(
+  timing=df_corr_all["timing"].map(TIMING_NAMES),
+  x=df_corr_all["x"].map(source_label),
+  y=df_corr_all["y"].map(source_label),
+).to_csv("corr.csv", index=False)
 df_corrs
 #%%
 def get_corr(df, x, y, timing):
@@ -168,6 +177,7 @@ ratio_results = {sec: calc_ratio_corr(df_merge[df_merge["sec"] == sec]) for sec 
 for sec, (_, df_rc) in ratio_results.items():
   print(sec)
   print(df_rc)
+pd.concat({sec: df_rc for sec, (_, df_rc) in ratio_results.items()}, names=["sec"]).reset_index("sec").to_csv("ratio_corr.csv", index=False)
 #%%
 def plot_ratio_scatter(df, df_corr, sec):
   fig, axes = plt.subplots(1, len(df_corr), figsize=(4 * len(df_corr), 4), sharex=True, sharey=True)
