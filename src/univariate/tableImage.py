@@ -1,5 +1,5 @@
 # %%
-"""hbm_profile.csv の各成分濃度について、論文用の表を2つ csv に出力する (どちらも sec / non-sec, 時期を分けずに全サンプルを使う)。
+"""hbm_profile_real.csv の各成分濃度について、論文用の表を2つ csv に出力する (どちらも sec / non-sec, 時期を分けずに全サンプルを使う)。
 
 - 時期での比較: 時期ごとの 平均 ± SD と、同一被験者(family)の対応のある t 検定による時期間の個別比較
 - 分泌型での比較: sec / non-sec の 平均 ± SD と、Welch の t 検定
@@ -14,13 +14,11 @@ from statsmodels.stats.multitest import multipletests
 
 heredir = os.path.dirname(os.path.abspath(__file__))
 datadir = os.path.join(os.path.dirname(os.path.dirname(heredir)), "data")
-df = pd.read_csv(os.path.join(datadir, "hbm_profile.csv"))
+df = pd.read_csv(os.path.join(datadir, "hbm_profile_real.csv"))
 
 TIMING_LABEL = {3: "Newborn", 4: "1 mo.", 5: "4-5 mos"}
 SEC_ORDER = ["sec", "non-sec"]
 conc_cols = list(df.columns[df.columns.get_loc("2'-fucosyllactose"):])  # 濃度の列
-DILUTION = 600 / 270  # hbm_profile.csv の濃度は希釈後の値なので、希釈前 (母乳中) の濃度に戻す
-df[conc_cols] = df[conc_cols] * DILUTION
 
 
 def fmt_mean_sd(x):
